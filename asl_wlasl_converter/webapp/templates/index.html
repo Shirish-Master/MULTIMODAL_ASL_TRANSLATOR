@@ -57,16 +57,23 @@
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="transitions-switch" checked>
                                         <label class="form-check-label" for="transitions-switch">Include transitions between signs</label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="resize-switch" checked>
                                         <label class="form-check-label" for="resize-switch">Resize videos to uniform size</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="homonym-switch" checked>
+                                        <label class="form-check-label" for="homonym-switch">Detect homonyms</label>
+                                        <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Identifies context-specific meanings for words with multiple definitions"></i>
                                     </div>
                                 </div>
                             </div>
@@ -93,6 +100,10 @@
                                         </div>
                                         <div class="card-body">
                                             <div id="glossed-text"></div>
+                                            <div id="homonym-info" class="mt-3 d-none">
+                                                <h6 class="text-info"><i class="fas fa-info-circle me-2"></i>Homonyms Detected</h6>
+                                                <div id="homonym-meanings" class="small"></div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

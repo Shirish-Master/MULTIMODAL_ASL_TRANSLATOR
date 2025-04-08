@@ -140,6 +140,9 @@ def create_asl_video_from_text(
         if homonym_meanings:
             print(f"Detected homonyms with meanings: {homonym_meanings}")
     
+    # Store homonym meanings for return
+    result_homonyms = homonym_meanings
+    
     # Find videos for each word in the gloss
     video_paths = []
     missing_words = []
@@ -178,7 +181,7 @@ def create_asl_video_from_text(
     
     if not video_paths:
         print("Error: No videos found for any words in the input text")
-        return None
+        return None, {}
     
     # Stitch videos together
     print("Stitching videos together...")
@@ -209,7 +212,7 @@ def create_asl_video_from_text(
             clip.close()
         final_clip.close()
         
-        return output_path
+        return output_path, result_homonyms
         
     except Exception as e:
         print(f"Error stitching videos: {e}")
@@ -221,7 +224,7 @@ def create_asl_video_from_text(
             except:
                 pass
                 
-        return None
+        return None, {}
 
 
 def main():

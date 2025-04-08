@@ -121,12 +121,14 @@ async function handleTextToVideo(event) {
     // Get form options
     const includeTransitions = document.getElementById('transitions-switch').checked;
     const resizeVideos = document.getElementById('resize-switch').checked;
+    const detectHomonyms = document.getElementById('homonym-switch').checked;
     
     // Create form data
     const formData = new FormData();
     formData.append('text', textInput);
     formData.append('transitions', includeTransitions);
     formData.append('resize', resizeVideos);
+    formData.append('detect_homonyms', detectHomonyms);
     
     try {
         const response = await fetch('/api/text-to-video', {
@@ -153,6 +155,28 @@ async function handleTextToVideo(event) {
             glossedTextElement.innerHTML = data.glossed_text.map(word => 
                 `<span class="gloss-word">${word}</span>`
             ).join(' ');
+            
+            // Display homonym meanings if any were detected
+            const homonymInfo = document.getElementById('homonym-info');
+            const homonymMeanings = document.getElementById('homonym-meanings');
+            
+            if (data.homonym_meanings && Object.keys(data.homonym_meanings).length > 0) {
+                homonymInfo.classList.remove('d-none');
+                
+                // Create HTML for homonym meanings
+                let homonymHTML = '<ul class="list-group list-group-flush">';
+                for (const [word, meaning] of Object.entries(data.homonym_meanings)) {
+                    homonymHTML += `<li class="list-group-item py-1 px-2">
+                        <strong>${word}</strong>: meaning "${meaning}" in this context
+                    </li>`;
+                }
+                homonymHTML += '</ul>';
+                
+                homonymMeanings.innerHTML = homonymHTML;
+            } else {
+                homonymInfo.classList.add('d-none');
+                homonymMeanings.innerHTML = '';
+            }
             
             // Scroll to result
             document.getElementById('text-to-video-result').scrollIntoView({behavior: 'smooth'});

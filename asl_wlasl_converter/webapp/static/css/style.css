@@ -86,6 +86,23 @@ body {
     margin: 2px;
 }
 
+/* Homonym Styling */
+#homonym-info {
+    border-top: 1px solid #dee2e6;
+    padding-top: 12px;
+}
+
+#homonym-meanings .list-group-item {
+    background-color: rgba(23, 162, 184, 0.1);
+    border: 1px solid rgba(23, 162, 184, 0.2);
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+}
+
+#homonym-meanings strong {
+    color: #17a2b8;
+}
+
 /* Form Elements */
 textarea {
     resize: vertical;

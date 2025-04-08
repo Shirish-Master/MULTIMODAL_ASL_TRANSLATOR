@@ -107,14 +107,16 @@ def api_text_to_video():
         # Get options from the request
         include_transitions = request.form.get('transitions', 'true') == 'true'
         resize_videos = request.form.get('resize', 'true') == 'true'
+        detect_homonyms = request.form.get('detect_homonyms', 'true') == 'true'
         
         # Create the ASL video
-        result_path = create_asl_video_from_text(
+        result_path, homonym_meanings = create_asl_video_from_text(
             text,
             dataset,
             output_path,
             include_transitions=include_transitions,
-            resize_videos=resize_videos
+            resize_videos=resize_videos,
+            detect_homonyms_enabled=detect_homonyms
         )
         
         if result_path:
@@ -125,7 +127,8 @@ def api_text_to_video():
             return jsonify({
                 'status': 'success',
                 'video_url': url_for('static', filename=f'generated/{output_filename}'),
-                'glossed_text': glossed_text
+                'glossed_text': glossed_text,
+                'homonym_meanings': homonym_meanings
             })
         else:
             return jsonify({'error': 'Failed to create ASL video. Check logs for details.'}), 500
