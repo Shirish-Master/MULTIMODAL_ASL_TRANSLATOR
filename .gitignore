@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+.env
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.mp4
+output/
+generated_videos/
+temp/
+*.npz
+*.npy
+*.pth
+
+# API Keys and secrets
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Large files
+*.hdf5
+*.h5
+*.pkl
