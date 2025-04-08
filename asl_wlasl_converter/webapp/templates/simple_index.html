@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL WLASL Converter (Simple)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .footer {
+            margin-top: auto;
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .video-container video {
+            width: 100%;
+            display: block;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-sign-language me-2"></i>
+                ASL WLASL Converter (Simple)
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="alert alert-info" id="dataset-info">
+            <h4>Loading dataset information...</h4>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4>Word to ASL Video Lookup</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="word-lookup-form">
+                            <div class="mb-3">
+                                <label for="word-input" class="form-label">Enter a word (e.g., "book", "learn", "want")</label>
+                                <input type="text" id="word-input" class="form-control" placeholder="Enter a word" required>
+                            </div>
+                            <div class="mb-3">
+                                <button type="submit" class="btn btn-primary">Show ASL Video</button>
+                                <button type="button" id="select-from-list" class="btn btn-outline-primary ms-2">Select from Word List</button>
+                            </div>
+                        </form>
+
+                        <div id="word-video-result" class="mt-4 d-none">
+                            <h4>ASL Video for: <span id="result-word" class="badge bg-primary"></span></h4>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="video-container">
+                                        <video id="word-video" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="word-error" class="mt-4 d-none">
+                            <div class="alert alert-danger">
+                                <h5>Error</h5>
+                                <p id="error-message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h4>Video to Text Recognition</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="video-upload-form" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="video-file" class="form-label">Upload ASL Video</label>
+                                <input class="form-control" type="file" id="video-file" name="video" accept="video/*">
+                                <div class="form-text">Upload a video of ASL signing to recognize the signs.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="top-k" class="form-label">Number of predictions</label>
+                                <select class="form-select" id="top-k" name="top_k">
+                                    <option value="1">1 (most likely only)</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Recognize Signs</button>
+                        </form>
+                        
+                        <div id="video-results" class="mt-4 d-none">
+                            <h4>Recognition Results</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="video-container">
+                                        <video id="uploaded-video" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">Predicted Signs</div>
+                                        <div class="card-body">
+                                            <div id="model-info" class="alert alert-info mb-3" style="display: none;">
+                                                Using MediaPipe for hand tracking + MobileNetV2 for sign classification
+                                            </div>
+                                            <ul id="predictions-list" class="list-group">
+                                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                    Loading predictions...
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="video-error" class="mt-4 d-none">
+                            <div class="alert alert-danger">
+                                <h5>Error</h5>
+                                <p id="video-error-message"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h4>Sentence to ASL Video Generator</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="sentence-form">
+                            <div class="mb-3">
+                                <label for="sentence-input" class="form-label">Enter a sentence to convert to ASL</label>
+                                <input type="text" id="sentence-input" class="form-control" 
+                                    placeholder="e.g., I want to learn sign language" required>
+                                <div class="form-text">
+                                    The sentence will be converted to ASL gloss and matching videos will be stitched together.
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="include-transitions" checked>
+                                        <label class="form-check-label" for="include-transitions">
+                                            Include smooth transitions between signs
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="resize-videos" checked>
+                                        <label class="form-check-label" for="resize-videos">
+                                            Resize videos to uniform size
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success">Generate ASL Video</button>
+                        </form>
+                        
+                        <div id="sentence-result" class="mt-4 d-none">
+                            <h4>ASL Video for Your Sentence</h4>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="video-container">
+                                        <video id="sentence-video" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header">ASL Gloss</div>
+                                        <div class="card-body">
+                                            <p class="text-muted small">ASL uses its own grammar, different from English. 
+                                            These are the core signs used:</p>
+                                            <div id="gloss-display" class="p-2 mb-2 bg-light rounded">
+                                                <code>Loading gloss...</code>
+                                            </div>
+                                            <div id="missing-words-display" class="alert alert-warning mt-2 d-none">
+                                                <p class="mb-1"><strong>Missing signs:</strong></p>
+                                                <p id="missing-words-list" class="mb-0 small"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="sentence-error" class="mt-4 d-none">
+                            <div class="alert alert-danger">
+                                <h5>Error</h5>
+                                <p id="sentence-error-message"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <h5><i class="fas fa-info-circle me-2"></i>How This Works</h5>
+                            <p>This tool converts your English sentence into ASL gloss format using advanced ASL grammar rules:</p>
+                            <ul class="mb-3">
+                                <li>ASL grammar ordering with topics and time references first</li>
+                                <li>Proper question structure with non-manual markers</li>
+                                <li>Advanced morphological analysis for word forms</li>
+                                <li>Handling of verb directionality and classifiers</li>
+                                <li>Full linguistic support for:</li>
+                                <ul>
+                                    <li>Irregular verbs and plurals (e.g., "went" → "GO FINISH")</li>
+                                    <li>Directional verbs (e.g., "give" with directional indicators)</li>
+                                    <li>Classifier predicates for spatial descriptions</li>
+                                    <li>Plural nouns shown as [NOUN MANY]</li>
+                                    <li>Past tense shown as [VERB FINISH]</li>
+                                    <li>Proper handling of negation with sentence-final NOT</li>
+                                </ul>
+                                <li>Automatic function word removal</li>
+                                <li>Comprehensive ASL-specific transformations</li>
+                            </ul>
+                            <p>The system then finds videos for each gloss word in the WLASL dataset and stitches them together into a continuous sequence.</p>
+                            <p><strong>Note:</strong> Words in UPPERCASE indicate ASL signs. Only words with available videos in the dataset will be included in the final video.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Word List Modal -->
+        <div class="modal fade" id="wordListModal" tabindex="-1" aria-labelledby="wordListModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="wordListModalLabel">Available ASL Words</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="input-group mb-3">
+                            <input type="text" id="word-search" class="form-control" placeholder="Search words...">
+                            <button class="btn btn-outline-secondary" type="button" id="word-search-btn">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="alert alert-info mb-3">
+                            <p>There are over 11,980 video files available. Building the complete word list may take a moment.</p>
+                            <p>The word list only shows words with confirmed available videos.</p>
+                        </div>
+                        <div id="word-list-progress" class="progress mb-3" style="display: none;">
+                            <div id="word-list-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                Loading words... 0%
+                            </div>
+                        </div>
+                        <div id="word-list-container" class="d-flex flex-wrap" style="max-height: 400px; overflow-y: auto;">
+                            <div class="d-flex justify-content-center w-100">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-4 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">ASL WLASL Converter &copy; 2025</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    
+    <script>
+        let availableWords = [];
+        let wordListModal;
+
+        // Load dataset information
+        async function loadDatasetInfo() {
+            try {
+                const response = await fetch('/api/dataset-info');
+                const data = await response.json();
+                
+                const infoElement = document.getElementById('dataset-info');
+                
+                if (data.status === 'success') {
+                    infoElement.classList.remove('alert-info');
+                    infoElement.classList.add('alert-success');
+                    
+                    let html = `<h4><i class="fas fa-check-circle me-2"></i>Dataset Ready</h4>`;
+                    html += `<p>The WLASL dataset contains ${data.word_count} words.</p>`;
+                    html += `<p>Sample words: ${data.sample_words.join(', ')}...</p>`;
+                    html += `<p>Videos directory: ${data.videos_dir}</p>`;
+                    
+                    infoElement.innerHTML = html;
+                    
+                    // Store all words for the word list
+                    if (data.all_words) {
+                        availableWords = data.all_words;
+                    }
+                } else {
+                    infoElement.classList.remove('alert-info');
+                    infoElement.classList.add('alert-danger');
+                    
+                    let html = `<h4><i class="fas fa-times-circle me-2"></i>Error</h4>`;
+                    html += `<p>${data.message || 'Unknown error loading the dataset.'}</p>`;
+                    
+                    infoElement.innerHTML = html;
+                }
+            } catch (error) {
+                const infoElement = document.getElementById('dataset-info');
+                infoElement.classList.remove('alert-info');
+                infoElement.classList.add('alert-danger');
+                
+                let html = `<h4><i class="fas fa-times-circle me-2"></i>Error</h4>`;
+                html += `<p>Could not connect to the server. Please check if the application is running.</p>`;
+                
+                infoElement.innerHTML = html;
+            }
+        }
+
+        // Load and display word list
+        async function loadWordList(searchFilter = '') {
+            const container = document.getElementById('word-list-container');
+            const progressBar = document.getElementById('word-list-progress');
+            const progressBarInner = document.getElementById('word-list-progress-bar');
+            
+            // If we already have words, use them
+            if (availableWords.length > 0) {
+                displayWordList(availableWords, searchFilter);
+                return;
+            }
+            
+            // Show progress bar
+            progressBar.style.display = 'flex';
+            progressBarInner.style.width = '0%';
+            progressBarInner.setAttribute('aria-valuenow', '0');
+            progressBarInner.textContent = 'Loading words... 0%';
+            
+            // Start SSE connection for progress updates
+            const eventSource = new EventSource('/api/word-list-progress');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const percent = data.percent;
+                
+                progressBarInner.style.width = percent + '%';
+                progressBarInner.setAttribute('aria-valuenow', percent);
+                progressBarInner.textContent = `Loading words... ${percent}%`;
+                
+                if (percent >= 100) {
+                    eventSource.close();
+                }
+            };
+            
+            eventSource.onerror = function() {
+                eventSource.close();
+            };
+            
+            // Otherwise load them from the API
+            try {
+                const response = await fetch('/api/word-list');
+                const data = await response.json();
+                
+                // Hide progress bar when done
+                progressBar.style.display = 'none';
+                
+                if (data.status === 'success') {
+                    availableWords = data.words;
+                    displayWordList(availableWords, searchFilter);
+                } else {
+                    container.innerHTML = `<div class="alert alert-danger w-100">
+                        Error loading word list: ${data.message || 'Unknown error'}
+                    </div>`;
+                }
+            } catch (error) {
+                // Hide progress bar on error
+                progressBar.style.display = 'none';
+                
+                container.innerHTML = `<div class="alert alert-danger w-100">
+                    Network error loading word list. Please try again.
+                </div>`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Display word list with optional search filter
+        function displayWordList(words, searchFilter = '') {
+            const container = document.getElementById('word-list-container');
+            container.innerHTML = '';
+            
+            // Filter words if search term is provided
+            let filteredWords = words;
+            if (searchFilter) {
+                const searchLower = searchFilter.toLowerCase();
+                filteredWords = words.filter(word => 
+                    word.toLowerCase().includes(searchLower)
+                );
+            }
+            
+            // Sort alphabetically
+            filteredWords.sort();
+            
+            if (filteredWords.length === 0) {
+                container.innerHTML = `<div class="alert alert-warning w-100">
+                    No words found matching "${searchFilter}".
+                </div>`;
+                return;
+            }
+            
+            // Create word buttons
+            filteredWords.forEach(word => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-secondary m-1';
+                btn.textContent = word;
+                btn.addEventListener('click', () => {
+                    // Set the word input and close modal
+                    document.getElementById('word-input').value = word;
+                    wordListModal.hide();
+                    // Trigger lookup
+                    lookupWord(word);
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        // Handle word lookup form submission
+        async function handleWordLookup(event) {
+            event.preventDefault();
+            
+            const wordInput = document.getElementById('word-input').value.trim();
+            if (!wordInput) {
+                showError('Please enter a word.');
+                return;
+            }
+            
+            lookupWord(wordInput);
+        }
+        
+        // Look up a word
+        async function lookupWord(word) {
+            try {
+                const response = await fetch(`/api/word-video?word=${encodeURIComponent(word)}`);
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    // Show result
+                    document.getElementById('word-video-result').classList.remove('d-none');
+                    document.getElementById('word-error').classList.add('d-none');
+                    
+                    // Display the word
+                    document.getElementById('result-word').textContent = data.word;
+                    
+                    // Display the video
+                    const videoElement = document.getElementById('word-video');
+                    videoElement.src = `/videos/${data.video_path.split('/').pop()}`;
+                    videoElement.load();
+                    
+                    // Scroll to result
+                    document.getElementById('word-video-result').scrollIntoView({behavior: 'smooth'});
+                } else {
+                    showError(data.message || 'Failed to find video for this word.');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            document.getElementById('word-video-result').classList.add('d-none');
+            document.getElementById('word-error').classList.remove('d-none');
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('word-error').scrollIntoView({behavior: 'smooth'});
+        }
+
+        // Initialize
+        // Handle video upload for recognition
+        async function handleVideoUpload(event) {
+            event.preventDefault();
+            
+            const videoFile = document.getElementById('video-file').files[0];
+            if (!videoFile) {
+                showVideoError('Please select a video file to upload.');
+                return;
+            }
+            
+            const topK = document.getElementById('top-k').value;
+            const formData = new FormData();
+            formData.append('video', videoFile);
+            formData.append('top_k', topK);
+            
+            try {
+                // Show loading state
+                document.getElementById('video-results').classList.remove('d-none');
+                document.getElementById('predictions-list').innerHTML = `
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Analyzing video...</span>
+                            </div>
+                        </div>
+                        <p class="text-center mt-2">Analyzing video, this may take a moment...</p>
+                    </li>
+                `;
+                
+                // Display the uploaded video
+                const videoElement = document.getElementById('uploaded-video');
+                videoElement.src = URL.createObjectURL(videoFile);
+                videoElement.load();
+                
+                // Send the video for recognition
+                const response = await fetch('/api/video-to-text', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    // Show model info
+                    const modelInfo = document.getElementById('model-info');
+                    modelInfo.style.display = 'block';
+                    if (data.model_info) {
+                        modelInfo.textContent = data.model_info;
+                    }
+                    
+                    // Show predictions
+                    const predictionsList = document.getElementById('predictions-list');
+                    predictionsList.innerHTML = '';
+                    
+                    if (data.predictions && data.predictions.length > 0) {
+                        data.predictions.forEach(prediction => {
+                            const confidence = Math.round(prediction.confidence * 100);
+                            const listItem = document.createElement('li');
+                            listItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+                            
+                            // Use color coding based on confidence
+                            let badgeClass = 'bg-primary';
+                            if (confidence >= 80) badgeClass = 'bg-success';
+                            else if (confidence >= 50) badgeClass = 'bg-primary';
+                            else if (confidence >= 30) badgeClass = 'bg-warning text-dark';
+                            else badgeClass = 'bg-danger';
+                            
+                            listItem.innerHTML = `
+                                <strong>${prediction.word}</strong>
+                                <span class="badge ${badgeClass} rounded-pill">${confidence}%</span>
+                            `;
+                            predictionsList.appendChild(listItem);
+                        });
+                    } else {
+                        predictionsList.innerHTML = `
+                            <li class="list-group-item">
+                                No predictions found. Try a different video.
+                            </li>
+                        `;
+                    }
+                } else {
+                    showVideoError(data.message || 'Failed to recognize signs in the video.');
+                }
+            } catch (error) {
+                showVideoError('Network error. Please try again.');
+                console.error('Error:', error);
+            }
+        }
+        
+        // Show video error message
+        function showVideoError(message) {
+            document.getElementById('video-results').classList.add('d-none');
+            document.getElementById('video-error').classList.remove('d-none');
+            document.getElementById('video-error-message').textContent = message;
+            document.getElementById('video-error').scrollIntoView({behavior: 'smooth'});
+        }
+
+        // Handle sentence to video conversion
+        async function handleSentenceToVideo(event) {
+            event.preventDefault();
+            
+            const sentenceInput = document.getElementById('sentence-input').value.trim();
+            if (!sentenceInput) {
+                showSentenceError('Please enter a sentence to convert.');
+                return;
+            }
+            
+            const includeTransitions = document.getElementById('include-transitions').checked;
+            const resizeVideos = document.getElementById('resize-videos').checked;
+            
+            try {
+                // Show loading state
+                document.getElementById('sentence-result').classList.remove('d-none');
+                document.getElementById('sentence-error').classList.add('d-none');
+                document.getElementById('gloss-display').innerHTML = `
+                    <div class="d-flex justify-content-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <span class="ms-2">Converting to ASL...</span>
+                    </div>
+                `;
+                
+                // Make API request
+                const response = await fetch('/api/sentence-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sentence: sentenceInput,
+                        include_transitions: includeTransitions,
+                        resize_videos: resizeVideos
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.status === 'success') {
+                    // Show the gloss
+                    document.getElementById('gloss-display').innerHTML = `
+                        <code>${data.gloss.join(' → ')}</code>
+                    `;
+                    
+                    // Show missing words if any
+                    if (data.missing_words && data.missing_words.length > 0) {
+                        document.getElementById('missing-words-display').classList.remove('d-none');
+                        document.getElementById('missing-words-list').textContent = 
+                            data.missing_words.join(', ');
+                    } else {
+                        document.getElementById('missing-words-display').classList.add('d-none');
+                    }
+                    
+                    // Display the video
+                    const videoElement = document.getElementById('sentence-video');
+                    videoElement.src = data.video_url;
+                    videoElement.load();
+                    videoElement.play();
+                    
+                    // Scroll to result
+                    document.getElementById('sentence-result').scrollIntoView({behavior: 'smooth'});
+                } else {
+                    showSentenceError(data.message || 'Failed to create ASL video.');
+                }
+            } catch (error) {
+                showSentenceError('Network error. Please try again.');
+                console.error('Error:', error);
+            }
+        }
+        
+        // Show sentence error message
+        function showSentenceError(message) {
+            document.getElementById('sentence-result').classList.add('d-none');
+            document.getElementById('sentence-error').classList.remove('d-none');
+            document.getElementById('sentence-error-message').textContent = message;
+            document.getElementById('sentence-error').scrollIntoView({behavior: 'smooth'});
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Bootstrap modal
+            wordListModal = new bootstrap.Modal(document.getElementById('wordListModal'));
+            
+            // Load dataset info
+            loadDatasetInfo();
+            
+            // Word lookup form
+            document.getElementById('word-lookup-form').addEventListener('submit', handleWordLookup);
+            
+            // Video upload form
+            document.getElementById('video-upload-form').addEventListener('submit', handleVideoUpload);
+            
+            // Sentence to video form
+            document.getElementById('sentence-form').addEventListener('submit', handleSentenceToVideo);
+            
+            // Word list button
+            document.getElementById('select-from-list').addEventListener('click', () => {
+                loadWordList();
+                wordListModal.show();
+            });
+            
+            // Word search in modal
+            document.getElementById('word-search-btn').addEventListener('click', () => {
+                const searchTerm = document.getElementById('word-search').value.trim();
+                displayWordList(availableWords, searchTerm);
+            });
+            
+            // Also search when Enter is pressed
+            document.getElementById('word-search').addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    const searchTerm = document.getElementById('word-search').value.trim();
+                    displayWordList(availableWords, searchTerm);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

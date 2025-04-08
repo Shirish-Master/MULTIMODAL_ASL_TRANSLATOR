@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL WLASL Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-sign-language me-2"></i>
+                ASL WLASL Converter
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#text-to-video" data-bs-toggle="tab">Text to Video</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#video-to-text" data-bs-toggle="tab">Video to Text</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#random-video" data-bs-toggle="tab">Random Video</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/setup">Setup</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="alert alert-info" id="dataset-info">
+            <h4>Loading dataset information...</h4>
+        </div>
+
+        <div class="tab-content">
+            <!-- Text to Video Tab -->
+            <div class="tab-pane fade show active" id="text-to-video">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4><i class="fas fa-keyboard me-2"></i>Text to ASL Video</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="text-to-video-form">
+                            <div class="mb-3">
+                                <label for="text-input" class="form-label">English Text</label>
+                                <textarea id="text-input" class="form-control" rows="3" placeholder="Enter text to convert to ASL" required></textarea>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="transitions-switch" checked>
+                                        <label class="form-check-label" for="transitions-switch">Include transitions between signs</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="resize-switch" checked>
+                                        <label class="form-check-label" for="resize-switch">Resize videos to uniform size</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-video me-2"></i>Generate ASL Video
+                            </button>
+                        </form>
+
+                        <div id="text-to-video-result" class="mt-4 d-none">
+                            <h4>Generated ASL Video</h4>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="video-container">
+                                        <video id="generated-video" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-white">
+                                            <h5>ASL Gloss</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="glossed-text"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video to Text Tab -->
+            <div class="tab-pane fade" id="video-to-text">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h4><i class="fas fa-file-video me-2"></i>ASL Video to Text</h4>
+                    </div>
+                    <div class="card-body">
+                        <form id="video-to-text-form">
+                            <div class="mb-3">
+                                <label for="video-input" class="form-label">Upload ASL Video</label>
+                                <input type="file" id="video-input" class="form-control" accept="video/*" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="top-k" class="form-label">Top Predictions</label>
+                                <select id="top-k" class="form-select">
+                                    <option value="1">Top 1</option>
+                                    <option value="3">Top 3</option>
+                                    <option value="5" selected>Top 5</option>
+                                    <option value="10">Top 10</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-search me-2"></i>Recognize Signs
+                            </button>
+                        </form>
+
+                        <div id="video-to-text-result" class="mt-4 d-none">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="video-container">
+                                        <video id="uploaded-video" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header bg-success text-white">
+                                            <h5>Recognition Results</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul id="recognition-results" class="list-group"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Random Video Tab -->
+            <div class="tab-pane fade" id="random-video">
+                <div class="card">
+                    <div class="card-header bg-warning">
+                        <h4><i class="fas fa-random me-2"></i>Random ASL Video</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="recognize-switch" checked>
+                                <label class="form-check-label" for="recognize-switch">Recognize the random video</label>
+                            </div>
+                        </div>
+
+                        <button id="random-video-btn" class="btn btn-warning">
+                            <i class="fas fa-dice me-2"></i>Get Random ASL Video
+                        </button>
+
+                        <div id="random-video-result" class="mt-4 d-none">
+                            <h4>Random ASL Video: <span id="random-video-word" class="badge bg-warning"></span></h4>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="video-container">
+                                        <video id="random-video-player" controls class="img-fluid">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                </div>
+                                <div class="col-md-4" id="random-recognition-container">
+                                    <div class="card">
+                                        <div class="card-header bg-warning">
+                                            <h5>Recognition Results</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul id="random-recognition-results" class="list-group"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5 id="loading-message">Processing your request...</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Error</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="error-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-4 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">ASL WLASL Converter &copy; 2025</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

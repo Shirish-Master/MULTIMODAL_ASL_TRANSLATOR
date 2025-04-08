@@ -1,0 +1,128 @@
+/* ASL WLASL Converter Web Application Styles */
+
+/* General Styles */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer {
+    margin-top: auto;
+}
+
+.tab-content {
+    padding-top: 20px;
+}
+
+/* Video Container */
+.video-container {
+    position: relative;
+    width: 100%;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.video-container video {
+    width: 100%;
+    display: block;
+    border-radius: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Card and List Styling */
+.card {
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: none;
+}
+
+.card-header {
+    font-weight: bold;
+}
+
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.confidence-bar {
+    height: 10px;
+    background-color: #0d6efd;
+    border-radius: 5px;
+}
+
+/* Loading Spinner */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Recognition Results */
+.recognition-word {
+    font-weight: bold;
+}
+
+.recognition-confidence {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+/* Gloss Styling */
+#glossed-text {
+    font-family: monospace;
+    font-size: 1.2rem;
+    line-height: 1.5;
+}
+
+.gloss-word {
+    display: inline-block;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 2px;
+}
+
+/* Form Elements */
+textarea {
+    resize: vertical;
+}
+
+.form-switch .form-check-input {
+    width: 3em;
+}
+
+/* Setup Page */
+pre {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+}
+
+code {
+    color: #0d6efd;
+}
+
+#setup-status {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Status Indicators */
+.status-check {
+    font-size: 1.2rem;
+    margin-right: 10px;
+}
+
+.status-text {
+    font-weight: normal;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .card-body {
+        padding: 15px;
+    }
+}

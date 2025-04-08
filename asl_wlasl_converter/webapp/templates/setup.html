@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup - ASL WLASL Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-sign-language me-2"></i>
+                ASL WLASL Converter
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/setup">Setup</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="fas fa-cog me-2"></i>Setup ASL WLASL Converter</h4>
+            </div>
+            <div class="card-body">
+                <div id="setup-status" class="alert alert-info">
+                    <h5><i class="fas fa-spinner fa-spin me-2"></i>Checking setup status...</h5>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h5>1. Dataset Setup</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>To use the ASL WLASL Converter, you need to set up the WLASL dataset:</p>
+                                <ol>
+                                    <li>Download the WLASL_v0.3.json metadata file</li>
+                                    <li>Download the video files</li>
+                                    <li>Place files in the correct directories</li>
+                                </ol>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle me-2"></i>The WLASL dataset is required for both text-to-video and video-to-text conversion.
+                                </div>
+                                <a href="https://github.com/dxli94/WLASL" target="_blank" class="btn btn-info">
+                                    <i class="fas fa-external-link-alt me-2"></i>WLASL Repository
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h5>2. Model Setup</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>For video-to-text recognition, you need the pretrained I3D model:</p>
+                                <ol>
+                                    <li>Download the pretrained I3D model weights</li>
+                                    <li>Place the model file in the models directory</li>
+                                </ol>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle me-2"></i>The pretrained model is required for video-to-text recognition.
+                                </div>
+                                <a href="https://github.com/dxli94/WLASL#pretrained-models" target="_blank" class="btn btn-success">
+                                    <i class="fas fa-download me-2"></i>Download Pretrained Model
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header bg-warning">
+                        <h5>Manual Setup Instructions</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Directory Structure</h6>
+                        <pre><code>asl_wlasl_converter/
+├── data/
+│   ├── WLASL_v0.3.json     # WLASL metadata file
+│   └── videos/             # WLASL video files
+├── models/
+│   └── i3d_model.pth       # Pretrained I3D model
+└── ...</code></pre>
+                        
+                        <h6>Steps to Set Up Manually:</h6>
+                        <ol>
+                            <li>Create the data directory: <code id="data-dir-path">...</code></li>
+                            <li>Create the videos directory: <code id="videos-dir-path">...</code></li>
+                            <li>Create the models directory: <code id="models-dir-path">...</code></li>
+                            <li>Download WLASL_v0.3.json and place it in the data directory</li>
+                            <li>Download video files and place them in the videos directory</li>
+                            <li>Download the pretrained I3D model and place it in the models directory</li>
+                        </ol>
+                        
+                        <div class="alert alert-primary">
+                            <h6><i class="fas fa-lightbulb me-2"></i>Tip</h6>
+                            <p>You can also run the setup_dataset.py script to assist with setup:</p>
+                            <pre><code>cd asl_wlasl_converter
+python setup_dataset.py</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="/" class="btn btn-primary btn-lg">
+                        <i class="fas fa-home me-2"></i>Return to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer mt-4 py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">ASL WLASL Converter &copy; 2025</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/setup.js') }}"></script>
+</body>
+</html>
