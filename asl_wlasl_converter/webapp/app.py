@@ -58,10 +58,18 @@ app.config['OUTPUT_FOLDER'] = os.path.join(current_dir, 'static', 'generated')
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'mov', 'webm'}
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max upload size
 
-# ======== HARDCODED OPENAI API KEY ========
-# Replace 'your-api-key-here' with your actual OpenAI API key
-os.environ["OPENAI_API_KEY"] = "your-api-key-here"
-# =========================================
+# Load API key from config.py file (which is gitignored)
+try:
+    # Try to import from config.py file
+    import sys
+    sys.path.append(parent_dir)
+    from config import OPENAI_API_KEY
+    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+    print("Loaded API key from config.py file")
+except ImportError:
+    # Fallback to a placeholder value
+    os.environ["OPENAI_API_KEY"] = "your-api-key-here"
+    print("Using placeholder API key - please configure in config.py file")
 
 # Constants
 # First check if the JSON file exists in archive-3
