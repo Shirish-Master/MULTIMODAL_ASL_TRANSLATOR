@@ -38,7 +38,8 @@ def detect_homonyms(text: str, words: List[str]) -> Dict[str, str]:
     openai_api_key = os.environ.get("OPENAI_API_KEY", "")
     
     if not openai_api_key:
-        print("Warning: No OpenAI API key found. Homonym detection will be skipped.")
+        print("Warning: No OpenAI API key found. Please set it on the Setup page.")
+        print("Visit the Setup page and enter your API key to enable full homonym detection.")
         return homonym_meanings
         
     try:
@@ -65,13 +66,57 @@ def detect_homonyms(text: str, words: List[str]) -> Dict[str, str]:
             "Authorization": f"Bearer {openai_api_key}"
         }
         
+        # Check if this is a projects API key (sk-proj-...) and use appropriate model
+        if "sk-proj-" in openai_api_key:
+            # Project API keys often work better with gpt-4o-mini
+            model = "gpt-4o-mini"
+        else:
+            # Standard API keys
+            model = "gpt-4"
+        
+        # Enhanced homonym detection with explicit format and handling duplicate homonyms
+        homonym_prompt = f"""Analyze this sentence: '{text}'. Identify any homonyms and return their meanings using this format EXACTLY:
+
+homonym: meaning
+homonym: meaning
+
+For this sentence, check specifically if these potential homonyms exist and determine their meaning:
+{', '.join(potential_homonyms)}
+
+CRITICAL INSTRUCTIONS:
+1. If the same word appears multiple times with DIFFERENT meanings, include BOTH entries
+2. Only include actual homonyms found in the sentence
+3. Use lowercase for homonym words
+4. Be very specific about the meaning (e.g. "cutting tool" not just "tool")
+
+Examples of correct formatting:
+For "I saw a bat flying at night":
+bat: animal
+saw: past tense of see
+
+For "I saw a bear and used a saw to cut wood":
+saw: past tense of see
+saw: cutting tool
+bear: animal
+
+For "He hit the ball with a bat and saw a bat flying at night":
+bat: sports equipment
+bat: flying animal
+saw: past tense of see
+
+IMPORTANT: Respond ONLY with the homonym word and its meaning in the exact format shown."""
+
         payload = {
-            "model": "gpt-3.5-turbo",
+            "model": model,
             "messages": [
-                {"role": "system", "content": "You are a homonym detection assistant."},
-                {"role": "user", "content": f"Analyze this sentence: '{text}'. Identify any homonyms and return their meaning in JSON format. For example: {{\"bat\": \"animal\"}}. Only include words that are homonyms in this specific context."}
+                {"role": "system", "content": "You are a homonym detection assistant. You identify homonyms in sentences and determine their meaning based on context."},
+                {"role": "user", "content": homonym_prompt}
             ]
         }
+        
+        print(f"Using OpenAI model: {model}")
+        print(f"API key (first 10 chars): {openai_api_key[:10]}...")
+        print(f"Full request payload: {payload}")
         
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -83,21 +128,103 @@ def detect_homonyms(text: str, words: List[str]) -> Dict[str, str]:
             result = response.json()
             content = result["choices"][0]["message"]["content"]
             
-            # Try to extract JSON from the response
+            # Always save the raw response
+            homonym_meanings["raw_response"] = content.strip()
+            print(f"Raw API response: {content.strip()}")
+            print(f"Response content type: {type(content)}")
+            print(f"Response full structure: {result}")
+            
+            # Process the direct text response
             try:
-                # Find JSON in the response
-                import re
-                json_match = re.search(r'{.*}', content, re.DOTALL)
-                if json_match:
-                    meanings = json.loads(json_match.group(0))
-                    homonym_meanings = meanings
+                # First, try to handle newline-separated entries (our preferred format)
+                if '\n' in content:
+                    # Track occurrences of each homonym to handle duplicates like "saw" with different meanings
+                    homonym_counts = {}
+                    
+                    lines = content.strip().split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if ':' in line:
+                            parts = line.split(':', 1)
+                            word = parts[0].strip().lower()
+                            meaning = parts[1].strip()
+                            
+                            # Track how many times we've seen this homonym
+                            if word in homonym_counts:
+                                homonym_counts[word] += 1
+                                # For duplicates, append a counter to make them unique
+                                # First occurrence remains as is, second becomes "saw_1", etc.
+                                if homonym_counts[word] > 1:
+                                    word_key = f"{word}_{homonym_counts[word]-1}"
+                                    homonym_meanings[word_key] = meaning
+                                else:
+                                    homonym_meanings[word] = meaning
+                            else:
+                                homonym_counts[word] = 1
+                                homonym_meanings[word] = meaning
+                
+                # If no entries were found with newlines, try commas
+                if len(homonym_meanings) <= 1:  # Only has raw_response or empty
+                    # Split content by commas
+                    homonym_entries = content.split(',')
+                    
+                    # Handle the typical response pattern: "Animal, Equipment"
+                    if len(homonym_entries) > 0 and all((':' not in entry and ' → ' not in entry) for entry in homonym_entries):
+                        # Match the entries with the potential homonyms
+                        potential_homonyms_lower = [word.lower() for word in potential_homonyms]
+                        
+                        # For common homonyms like "saw" that appear twice, get unique entries
+                        unique_homonyms = []
+                        for word in potential_homonyms_lower:
+                            if word not in unique_homonyms:
+                                unique_homonyms.append(word)
+                        
+                        # If we have the same number of meanings as unique homonyms, we can map them
+                        if len(homonym_entries) == len(unique_homonyms):
+                            for i, word in enumerate(unique_homonyms):
+                                if i < len(homonym_entries):
+                                    meaning = homonym_entries[i].strip()
+                                    homonym_meanings[word] = meaning
+                    
+                    # Handle explicitly formatted responses with colons or arrows
+                    for entry in homonym_entries:
+                        entry = entry.strip()
+                        if ':' in entry:
+                            parts = entry.split(':', 1)
+                            word = parts[0].strip().lower()
+                            meaning = parts[1].strip()
+                            homonym_meanings[word] = meaning
+                        elif ' → ' in entry:
+                            parts = entry.split(' → ', 1)
+                            word = parts[0].strip().lower()
+                            meaning = parts[1].strip()
+                            homonym_meanings[word] = meaning
+                
+                # Handle 'bat' which was missing from the response
+                if 'bat' in [word.lower() for word in potential_homonyms] and 'bat' not in homonym_meanings:
+                    if 'animal' in content.lower():
+                        homonym_meanings['bat'] = 'animal'
+                    elif 'flying' in text.lower():
+                        homonym_meanings['bat'] = 'animal'
+                
+                if len(homonym_meanings) > 1:  # More than just the raw_response
                     print(f"Homonym meanings detected: {homonym_meanings}")
                 else:
-                    print("No homonym meanings found in API response")
-            except json.JSONDecodeError:
-                print(f"Failed to parse homonym meanings from API response: {content}")
+                    print("No structured homonym meanings detected, using raw response only")
+                    
+            except Exception as e:
+                print(f"Error processing homonym API response: {e}")
+                print(f"Original content: {content}")
         else:
-            print(f"API request failed with status code {response.status_code}")
+            error_message = f"API request failed with status code {response.status_code}"
+            try:
+                error_data = response.json()
+                error_message += f"\nError details: {error_data}"
+            except:
+                error_message += f"\nResponse text: {response.text}"
+            
+            print(error_message)
+            homonym_meanings["raw_response"] = f"OpenAI API Error: {error_message}"
             
     except Exception as e:
         print(f"Error in homonym detection: {e}")

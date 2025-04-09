@@ -7,11 +7,14 @@
 const textToVideoForm = document.getElementById('text-to-video-form');
 const videoToTextForm = document.getElementById('video-to-text-form');
 const randomVideoBtn = document.getElementById('random-video-btn');
-const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
 const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
 
 // Initialize application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize tooltips
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    
     // Initialize tabs
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
@@ -114,9 +117,11 @@ async function handleTextToVideo(event) {
         return;
     }
     
-    // Show loading modal
-    document.getElementById('loading-message').textContent = 'Generating ASL video...';
-    loadingModal.show();
+    // Show generating in progress directly in the form
+    const submitButton = textToVideoForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating Video...';
+    submitButton.disabled = true;
     
     // Get form options
     const includeTransitions = document.getElementById('transitions-switch').checked;
@@ -138,8 +143,9 @@ async function handleTextToVideo(event) {
         
         const data = await response.json();
         
-        // Hide loading modal
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         
         if (response.ok && data.status === 'success') {
             // Show result
@@ -152,31 +158,89 @@ async function handleTextToVideo(event) {
             
             // Display the glossed text
             const glossedTextElement = document.getElementById('glossed-text');
-            glossedTextElement.innerHTML = data.glossed_text.map(word => 
-                `<span class="gloss-word">${word}</span>`
-            ).join(' ');
+            glossedTextElement.innerHTML = `<code>${data.glossed_text.join(' → ')}</code>`;
+            
+            // Display missing words if any
+            const missingWordsDisplay = document.getElementById('missing-words-display');
+            const missingWordsList = document.getElementById('missing-words-list');
+            if (data.missing_words && data.missing_words.length > 0) {
+                missingWordsDisplay.classList.remove('d-none');
+                missingWordsList.textContent = data.missing_words.join(', ');
+            } else {
+                missingWordsDisplay.classList.add('d-none');
+            }
             
             // Display homonym meanings if any were detected
             const homonymInfo = document.getElementById('homonym-info');
             const homonymMeanings = document.getElementById('homonym-meanings');
             
-            if (data.homonym_meanings && Object.keys(data.homonym_meanings).length > 0) {
-                homonymInfo.classList.remove('d-none');
-                
-                // Create HTML for homonym meanings
-                let homonymHTML = '<ul class="list-group list-group-flush">';
-                for (const [word, meaning] of Object.entries(data.homonym_meanings)) {
-                    homonymHTML += `<li class="list-group-item py-1 px-2">
-                        <strong>${word}</strong>: meaning "${meaning}" in this context
+            // Always show homonym section if API key is available
+            homonymInfo.classList.remove('d-none');
+            
+            // For debugging
+            console.log("Homonym meanings:", data.homonym_meanings);
+            
+            // Create HTML for homonym meanings
+            let homonymHTML = '<ul class="list-group list-group-flush">';
+            
+            // Add a default message if no homonym meanings
+            if (!data.homonym_meanings || Object.keys(data.homonym_meanings).length === 0) {
+                homonymHTML += `<li class="list-group-item">
+                    <i>No homonym data available. API key may not be set.</i>
+                </li>`;
+            } else {
+                // Always show the raw API response first
+                if (data.homonym_meanings.hasOwnProperty('raw_response')) {
+                    homonymHTML += `<li class="list-group-item py-2 px-3 bg-light">
+                        <strong>Raw API Response:</strong><br>
+                        <span class="font-monospace">${data.homonym_meanings.raw_response}</span>
                     </li>`;
                 }
-                homonymHTML += '</ul>';
                 
-                homonymMeanings.innerHTML = homonymHTML;
-            } else {
-                homonymInfo.classList.add('d-none');
-                homonymMeanings.innerHTML = '';
+                // Process other homonym entries (excluding raw_response)
+                // Group homonyms that have the same base word (e.g., "saw" and "saw_1")
+                const groupedHomonyms = {};
+                
+                for (const [word, meaning] of Object.entries(data.homonym_meanings)) {
+                    // Skip the raw_response entry
+                    if (word === 'raw_response') continue;
+                    
+                    // Check if this is a duplicate homonym with a number suffix (e.g., "saw_1")
+                    const baseWord = word.split('_')[0];
+                    
+                    if (!groupedHomonyms[baseWord]) {
+                        groupedHomonyms[baseWord] = [];
+                    }
+                    
+                    // Convert object to string if necessary
+                    const meaningStr = typeof meaning === 'object' ? 
+                        JSON.stringify(meaning) : String(meaning);
+                    
+                    groupedHomonyms[baseWord].push(meaningStr);
+                }
+                
+                // Now display the grouped homonyms
+                for (const [baseWord, meanings] of Object.entries(groupedHomonyms)) {
+                    if (meanings.length === 1) {
+                        // Single meaning
+                        homonymHTML += `<li class="list-group-item py-1 px-2">
+                            <strong>${baseWord}</strong>: ${meanings[0]}
+                        </li>`;
+                    } else {
+                        // Multiple meanings for the same word
+                        homonymHTML += `<li class="list-group-item py-1 px-2">
+                            <strong>${baseWord}</strong>:
+                            <ul class="mb-0 ps-4">
+                                ${meanings.map(m => `<li>${m}</li>`).join('')}
+                            </ul>
+                        </li>`;
+                    }
+                }
             }
+            
+            homonymHTML += '</ul>';
+            
+            homonymMeanings.innerHTML = homonymHTML;
             
             // Scroll to result
             document.getElementById('text-to-video-result').scrollIntoView({behavior: 'smooth'});
@@ -184,7 +248,9 @@ async function handleTextToVideo(event) {
             showError(data.error || 'Failed to generate ASL video.');
         }
     } catch (error) {
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         showError('Network error. Please try again.');
         console.error('Error:', error);
     }
@@ -211,9 +277,11 @@ async function handleVideoToText(event) {
         return;
     }
     
-    // Show loading modal
-    document.getElementById('loading-message').textContent = 'Recognizing signs...';
-    loadingModal.show();
+    // Show generating in progress directly in the form
+    const submitButton = videoToTextForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing Video...';
+    submitButton.disabled = true;
     
     // Create form data
     const formData = new FormData();
@@ -228,8 +296,9 @@ async function handleVideoToText(event) {
         
         const data = await response.json();
         
-        // Hide loading modal
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         
         if (response.ok && data.status === 'success') {
             // Show result
@@ -249,7 +318,9 @@ async function handleVideoToText(event) {
             showError(data.error || 'Failed to recognize signs.');
         }
     } catch (error) {
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         showError('Network error. Please try again.');
         console.error('Error:', error);
     }
@@ -259,9 +330,11 @@ async function handleVideoToText(event) {
  * Handle random video selection
  */
 async function handleRandomVideo() {
-    // Show loading modal
-    document.getElementById('loading-message').textContent = 'Getting random video...';
-    loadingModal.show();
+    // Show loading in the button
+    const submitButton = randomVideoBtn;
+    const originalButtonText = submitButton.innerHTML;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading Random Video...';
+    submitButton.disabled = true;
     
     // Get form options
     const recognize = document.getElementById('recognize-switch').checked;
@@ -278,8 +351,9 @@ async function handleRandomVideo() {
         
         const data = await response.json();
         
-        // Hide loading modal
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         
         if (response.ok && data.status === 'success') {
             // Show result
@@ -308,7 +382,9 @@ async function handleRandomVideo() {
             showError(data.error || 'Failed to get random video.');
         }
     } catch (error) {
-        loadingModal.hide();
+        // Reset submit button
+        submitButton.innerHTML = originalButtonText;
+        submitButton.disabled = false;
         showError('Network error. Please try again.');
         console.error('Error:', error);
     }
