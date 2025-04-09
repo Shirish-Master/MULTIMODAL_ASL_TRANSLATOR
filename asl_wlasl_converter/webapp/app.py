@@ -13,6 +13,12 @@ import sys
 import json
 import uuid
 import tempfile
+import cv2
+import numpy as np
+import base64
+import io
+from PIL import Image
+import torch
 from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
 from werkzeug.utils import secure_filename
 
@@ -27,7 +33,7 @@ try:
     from text_to_video import create_asl_video_from_text
     from video_to_text import recognize_signs_from_video
     
-    # Import moviepy modules directly (necessary for compatibility)
+    # Import movie modules directly (necessary for compatibility)
     try:
         # Try importing directly from moviepy.editor
         from moviepy.editor import VideoFileClip, concatenate_videoclips
@@ -41,6 +47,51 @@ try:
             # Direct import as last resort
             import moviepy
             from moviepy import VideoFileClip, concatenate_videoclips
+    
+    # Import ASL alphabet recognition modules
+    try:
+        # Set paths to models directory
+        asl_models_dir = os.path.join(current_dir, 'models')
+        # Import keypoint extraction module
+        sys.path.append(os.path.join(current_dir, 'utils'))
+        from utils.keypoint_extraction import extract_keypoints
+        # Import keypoint model
+        from models.keypoint_model import KeypointMLP
+        # Define class names for ASL alphabet
+        asl_alphabet_class_names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 
+                                   'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 
+                                   'space', 'nothing', 'del']
+        # Initialize device
+        if torch.cuda.is_available():
+            asl_device = torch.device("cuda")
+            print("Using GPU for ASL alphabet recognition")
+        elif torch.backends.mps.is_available():
+            asl_device = torch.device("mps")
+            print("Using MPS for ASL alphabet recognition")
+        else:
+            asl_device = torch.device("cpu")
+            print("Using CPU for ASL alphabet recognition")
+            
+        # Initialize ASL alphabet model
+        asl_alphabet_model_path = os.path.join(asl_models_dir, 'best_keypoint_model.pth')
+        if os.path.exists(asl_alphabet_model_path):
+            print(f"Loading ASL alphabet model from {asl_alphabet_model_path}")
+            try:
+                asl_alphabet_model = KeypointMLP(input_dim=42, num_classes=len(asl_alphabet_class_names)).to(asl_device)
+                asl_alphabet_model.load_state_dict(torch.load(asl_alphabet_model_path, map_location=asl_device))
+                asl_alphabet_model.eval()
+                print("ASL alphabet model loaded successfully")
+                has_asl_alphabet_model = True
+            except Exception as model_err:
+                print(f"Error loading ASL alphabet model: {model_err}")
+                has_asl_alphabet_model = False
+        else:
+            print("ASL alphabet model not found")
+            has_asl_alphabet_model = False
+            
+    except Exception as alphabet_err:
+        print(f"Error setting up ASL alphabet recognition: {alphabet_err}")
+        has_asl_alphabet_model = False
             
 except ModuleNotFoundError as e:
     print(f"Error importing modules: {e}")
@@ -136,7 +187,13 @@ def index():
     # If hardcoded key is still the placeholder, show a special message
     is_placeholder = openai_api_key == "your-api-key-here"
     
-    return render_template('index.html', has_api_key=has_api_key, is_placeholder=is_placeholder)
+    # Check if ASL alphabet model is available
+    asl_alphabet_available = globals().get('has_asl_alphabet_model', False)
+    
+    return render_template('index.html', 
+                          has_api_key=has_api_key, 
+                          is_placeholder=is_placeholder,
+                          has_asl_alphabet_model=asl_alphabet_available)
 
 
 @app.route('/api/text-to-video', methods=['POST'])
@@ -571,6 +628,97 @@ def api_setup_check():
         'model_path': DEFAULT_MODEL_PATH,
         'has_api_key': has_api_key
     })
+
+
+# Helper functions for ASL Alphabet recognition
+def base64_to_image(base64_string):
+    """Convert base64 string to OpenCV image."""
+    # Remove the "data:image/jpeg;base64," prefix
+    if ',' in base64_string:
+        base64_string = base64_string.split(',')[1]
+    
+    # Decode base64 string
+    image_bytes = base64.b64decode(base64_string)
+    
+    # Convert to numpy array
+    image = np.array(Image.open(io.BytesIO(image_bytes)))
+    
+    # Convert RGB to BGR for OpenCV
+    if image.shape[2] == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    
+    return image
+
+def image_to_base64(image):
+    """Convert OpenCV image to base64 string."""
+    # Convert BGR to RGB
+    if image.shape[2] == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
+    # Encode as JPEG
+    _, buffer = cv2.imencode('.jpg', image)
+    
+    # Convert to base64
+    base64_string = base64.b64encode(buffer).decode('utf-8')
+    
+    return f"data:image/jpeg;base64,{base64_string}"
+
+@app.route('/api/asl-alphabet-predict', methods=['POST'])
+def api_asl_alphabet_predict():
+    """API endpoint for ASL alphabet prediction from webcam frame."""
+    if not globals().get('has_asl_alphabet_model', False):
+        return jsonify({
+            'error': 'ASL alphabet model not available'
+        }), 404
+        
+    try:
+        # Get data from request
+        data = request.json
+        image_data = data.get('image')
+        
+        # Convert base64 to image
+        frame = base64_to_image(image_data)
+        
+        # Convert BGR to RGB for MediaPipe
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Extract keypoints and get annotated frame
+        keypoints, annotated_image = extract_keypoints(
+            rgb, static_mode=False, min_detection_confidence=0.5
+        )
+        
+        # Only predict if keypoints were detected (not all zeros)
+        if not np.all(keypoints == 0):
+            # Convert to tensor
+            tensor = torch.FloatTensor(keypoints).unsqueeze(0).to(asl_device)
+            
+            # Get prediction
+            with torch.no_grad():
+                outputs = asl_alphabet_model(tensor)
+                probs = torch.nn.functional.softmax(outputs, dim=1)
+                conf, pred = torch.max(probs, 1)
+                
+            # Get class and confidence
+            predicted_class = asl_alphabet_class_names[pred.item()]
+            confidence = float(conf.item())
+        else:
+            # No hand detected
+            predicted_class = 'nothing'
+            confidence = 1.0
+            
+        # Convert annotated image to base64
+        annotated_base64 = image_to_base64(annotated_image)
+        
+        return jsonify({
+            'class': predicted_class,
+            'confidence': confidence,
+            'annotated_image': annotated_base64
+        })
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)})
 
 
 if __name__ == '__main__':

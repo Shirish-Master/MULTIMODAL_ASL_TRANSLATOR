@@ -1,0 +1,93 @@
+/* ASL Alphabet Recognition CSS */
+
+/* Webcam container with relative positioning */
+#asl-alphabet-webcam-container {
+    position: relative;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+/* Style for webcam video */
+#asl-alphabet-webcam {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+/* Canvas overlay on webcam */
+#asl-alphabet-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+/* Prediction display styling */
+#asl-alphabet-prediction {
+    font-size: 5rem;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Translation history container */
+#asl-alphabet-translation-history {
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 1.2rem;
+    line-height: 1.5;
+}
+
+/* Button styling */
+.asl-alphabet-btn {
+    transition: all 0.2s ease;
+}
+
+.asl-alphabet-btn:hover {
+    transform: translateY(-2px);
+}
+
+/* ASL letter reference grid */
+.asl-alphabet-reference {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.asl-alphabet-reference-item {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.asl-alphabet-reference-item img {
+    width: 100%;
+    height: auto;
+    border-radius: 3px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #asl-alphabet-prediction {
+        font-size: 3rem;
+    }
+    
+    #asl-alphabet-webcam, #asl-alphabet-canvas {
+        max-width: 100%;
+    }
+    
+    .asl-alphabet-reference {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}

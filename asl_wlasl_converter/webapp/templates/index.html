@@ -6,6 +6,7 @@
     <title>ASL WLASL Converter</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/asl-alphabet.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -30,6 +31,9 @@
                         <a class="nav-link" href="#random-video" data-bs-toggle="tab">Random Video</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#asl-alphabet" data-bs-toggle="tab">ASL Alphabet</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/setup">Setup</a>
                     </li>
                 </ul>
@@ -41,6 +45,26 @@
         <div class="alert alert-info" id="dataset-info">
             <h4>Loading dataset information...</h4>
         </div>
+        
+        {% if has_api_key %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Advanced Homonym Detection Enabled:</strong> Using OpenAI API for comprehensive homonym detection capable of identifying any word with multiple meanings in any context.
+        </div>
+        {% elif is_placeholder %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong>API Key Not Set:</strong> You need to replace the placeholder API key in the code.
+            <br>
+            Open <code>/Users/yuvan/Documents/Code/AI_testing/claudeCode/MiniProject/asl_wlasl_converter/webapp/app.py</code> and replace <code>"your-api-key-here"</code> on line 63 with your actual OpenAI API key.
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Limited Homonym Detection:</strong> Currently in demo mode with very basic homonym detection. 
+            <a href="/setup" class="alert-link">Add your OpenAI API key</a> to enable advanced AI-powered homonym detection for any word in any context.
+        </div>
+        {% endif %}
 
         <div class="tab-content">
             <!-- Text to Video Tab -->
@@ -72,8 +96,15 @@
                                 <div class="col-md-4">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="homonym-switch" checked>
-                                        <label class="form-check-label" for="homonym-switch">Detect homonyms</label>
-                                        <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Identifies context-specific meanings for words with multiple definitions"></i>
+                                        <label class="form-check-label" for="homonym-switch">
+                                            Detect homonyms
+                                            {% if has_api_key %}
+                                            <span class="badge bg-success ms-1" id="api-key-status">API Key Available</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark ms-1" id="api-key-status">Demo Mode</span>
+                                            {% endif %}
+                                        </label>
+                                        <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Identifies context-specific meanings for words with multiple definitions{% if not has_api_key %} - Currently in demo mode for words: bank, bat, bow, light{% endif %}"></i>
                                     </div>
                                 </div>
                             </div>
@@ -99,14 +130,68 @@
                                             <h5>ASL Gloss</h5>
                                         </div>
                                         <div class="card-body">
-                                            <div id="glossed-text"></div>
+                                            <p class="text-muted small">ASL uses its own grammar, different from English. 
+                                            These are the core signs used:</p>
+                                            <div id="glossed-text" class="p-2 mb-2 bg-light rounded"></div>
+                                            <div id="missing-words-display" class="alert alert-warning mt-2 d-none">
+                                                <p class="mb-1"><strong>Missing signs:</strong></p>
+                                                <p id="missing-words-list" class="mb-0 small"></p>
+                                            </div>
                                             <div id="homonym-info" class="mt-3 d-none">
-                                                <h6 class="text-info"><i class="fas fa-info-circle me-2"></i>Homonyms Detected</h6>
+                                                <h6 class="text-info"><i class="fas fa-info-circle me-2"></i>OpenAI Homonym Detection Results</h6>
                                                 <div id="homonym-meanings" class="small"></div>
+                                                
+                                                {% if has_api_key %}
+                                                <div class="mt-3">
+                                                    <p class="small text-muted">Using OpenAI API with model: GPT-4</p>
+                                                    <p class="small text-muted">API key status: Active</p>
+                                                    <a href="/api/test-openai" target="_blank" class="btn btn-sm btn-outline-info mt-2">
+                                                        <i class="fas fa-vial me-1"></i>Test API Key
+                                                    </a>
+                                                </div>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <div class="alert alert-info mt-3">
+                                <h5><i class="fas fa-info-circle me-2"></i>How ASL Translation Works</h5>
+                                <p>This tool converts your English sentence into ASL gloss format using advanced ASL grammar rules:</p>
+                                <ul class="mb-3">
+                                    <li>ASL grammar ordering with topics and time references first</li>
+                                    <li>Proper question structure with non-manual markers</li>
+                                    <li>Advanced morphological analysis for word forms</li>
+                                    <li>Handling of verb directionality and classifiers</li>
+                                    <li>Full linguistic support for:</li>
+                                    <ul>
+                                        <li>Irregular verbs and plurals (e.g., "went" → "GO FINISH")</li>
+                                        <li>Directional verbs (e.g., "give" with directional indicators)</li>
+                                        <li>Classifier predicates for spatial descriptions</li>
+                                        <li>Plural nouns shown as [NOUN MANY]</li>
+                                        <li>Past tense shown as [VERB FINISH]</li>
+                                        <li>Proper handling of negation with sentence-final NOT</li>
+                                    </ul>
+                                    <li>Automatic function word removal</li>
+                                    <li>Comprehensive ASL-specific transformations</li>
+                                </ul>
+                                <p>The system then finds videos for each gloss word in the WLASL dataset and stitches them together into a continuous sequence.</p>
+                                <p><strong>Homonym Detection:</strong> Words with multiple meanings are identified based on context.</p>
+                                
+                                {% if has_api_key %}
+                                <div class="alert alert-success">
+                                    <p><strong><i class="fas fa-robot me-2"></i>AI-Powered Homonym Detection:</strong> Using OpenAI GPT-4 to automatically detect all homonyms in your text and determine their specific meanings based on context.</p>
+                                    <p>Try complex sentences with multiple homonyms!</p>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    <p><strong><i class="fas fa-exclamation-triangle me-2"></i>OpenAI API Key Required:</strong> You need to set up an OpenAI API key to enable homonym detection.</p>
+                                    <p><a href="/setup" class="alert-link">Click here to set up your API key</a></p>
+                                </div>
+                                {% endif %}
+                                
+                                <p><strong>Note:</strong> Words in UPPERCASE indicate ASL signs. Only words with available videos in the dataset will be included in the final video. Try using multiple homonyms in a single sentence!</p>
                             </div>
                         </div>
                     </div>
@@ -209,22 +294,212 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Loading Spinner Modal -->
-    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body text-center p-4">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Loading...</span>
+            
+            <!-- ASL Alphabet Tab -->
+            <div class="tab-pane fade" id="asl-alphabet">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h4><i class="fas fa-hand-sparkles me-2"></i>ASL Alphabet Recognition</h4>
                     </div>
-                    <h5 id="loading-message">Processing your request...</h5>
+                    <div class="card-body">
+                        {% if has_asl_alphabet_model %}
+                        <!-- Model is available, show webcam interface -->
+                        <div class="row">
+                            <!-- Webcam and Controls -->
+                            <div class="col-md-8">
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">Live ASL Alphabet Recognition</h5>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="asl-alphabet-webcam-toggle" checked>
+                                                <label class="form-check-label" for="asl-alphabet-webcam-toggle">Webcam</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body text-center">
+                                        <!-- Webcam display -->
+                                        <div id="asl-alphabet-webcam-container">
+                                            <video id="asl-alphabet-webcam" autoplay playsinline width="640" height="480"></video>
+                                            <canvas id="asl-alphabet-canvas" width="640" height="480"></canvas>
+                                        </div>
+                                        <div id="asl-alphabet-status-message" class="alert alert-info mt-2 d-none"></div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p class="small text-muted mb-0">Using hand keypoint detection for best accuracy</p>
+                                            </div>
+                                            <div class="col-md-6 text-end">
+                                                <button id="asl-alphabet-start-btn" class="btn btn-info mt-2 asl-alphabet-btn" disabled>
+                                                    <i class="fas fa-play-circle me-2"></i>Start Recognition
+                                                </button>
+                                                <button id="asl-alphabet-stop-btn" class="btn btn-danger mt-2 d-none asl-alphabet-btn">
+                                                    <i class="fas fa-stop-circle me-2"></i>Stop
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Prediction Results -->
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0">Prediction</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center mb-4">
+                                            <div id="asl-alphabet-prediction" class="display-1">?</div>
+                                            <div id="asl-alphabet-confidence" class="text-muted">Confidence: 0%</div>
+                                        </div>
+                                        
+                                        <div class="p-2 border rounded bg-light" style="min-height: 100px;">
+                                            <h5>Translation History</h5>
+                                            <div id="asl-alphabet-history-text" class="font-monospace"></div>
+                                        </div>
+                                        
+                                        <div class="d-grid gap-2 mt-3">
+                                            <button id="asl-alphabet-clear-history-btn" class="btn btn-outline-secondary asl-alphabet-btn">
+                                                <i class="fas fa-eraser me-2"></i>Clear History
+                                            </button>
+                                            <button id="asl-alphabet-append-btn" class="btn btn-success asl-alphabet-btn" disabled>
+                                                <i class="fas fa-plus-circle me-2"></i>Add to History
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ASL Alphabet Reference -->
+                        <div class="card mt-4">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>ASL Alphabet Reference</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Position your hand clearly against a plain background, and make the sign for each letter.</p>
+                                
+                                <div class="alert alert-info">
+                                    <strong>Tips for best results:</strong>
+                                    <ul class="mb-0">
+                                        <li>Ensure good lighting on your hand</li>
+                                        <li>Use a plain, contrasting background</li>
+                                        <li>Position your hand within the frame</li>
+                                        <li>Hold each sign steady for best recognition</li>
+                                        <li>Use "DEL" sign to delete the last character</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="asl-alphabet-reference">
+                                    <!-- This will be populated with ASL alphabet reference images -->
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>A</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>B</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>C</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>D</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>E</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>F</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>G</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>H</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>I</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>J</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>K</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>L</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>M</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>N</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>O</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>P</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>Q</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>R</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>S</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>T</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>U</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>V</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>W</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>X</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>Y</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>Z</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>SPACE</div>
+                                    </div>
+                                    <div class="asl-alphabet-reference-item">
+                                        <div>DEL</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- Model is not available, show instructions -->
+                        <div class="alert alert-warning">
+                            <h5><i class="fas fa-exclamation-triangle me-2"></i>ASL Alphabet Model Not Available</h5>
+                            <p>The ASL alphabet recognition model is not available. To enable this feature:</p>
+                            <ol>
+                                <li>Download the ASL alphabet dataset from <a href="https://www.kaggle.com/datasets/grassknoted/asl-alphabet" target="_blank">Kaggle</a></li>
+                                <li>Train the model by following the instructions in the asl_translator project</li>
+                                <li>Copy the trained model file to <code>webapp/models/best_keypoint_model.pth</code></li>
+                            </ol>
+                            <p>Or use the pre-trained model from the original asl_translator project if available.</p>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Error Modal -->
     <div class="modal fade" id="errorModal" tabindex="-1">
@@ -252,5 +527,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/asl-alphabet.js') }}"></script>
 </body>
 </html>
